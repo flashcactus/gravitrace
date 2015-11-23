@@ -25,14 +25,11 @@ struct BlackHole {
 
 struct AccretionDisk {
     double radius;
-    //double scale;
     png::image<png::rgb_pixel> texture;
     png::rgb_pixel get_pixel (vec3 point) {
-        return png::rgb_pixel(
-            abs(point.x*5),
-            abs(point.y*5),
-            static_cast<int>(point.z*50)
-        );
+        int x = round(texture.get_height()*(point.x/(2*radius) + 0.5));
+        int y = round(texture.get_width()*(point.y/(2*radius) + 0.5));
+        return texture[x][y];
     }
     AccretionDisk(double r, png::image<png::rgb_pixel> tx) {
         radius = r;
@@ -93,16 +90,16 @@ int main() {
     vec3 Z(0,0,1);
     Rotation rot(0, -PI/8, 0);
 
-    Camera c(vec3(-3000,0,1000), rot, 1024,1024);
+    Camera c(vec3(-6000,0,2000), rot, 512,512);
     
     print_vec3(rot.rotate(X),"\n");
     print_vec3(rot.rotate(Y),"\n");
     print_vec3(rot.rotate(Z),"\n\n");
     
-    BlackHole gargantua(1.32e28);
-    cout<<gargantua.radius<<endl;
-    AccretionDisk d(2000, c.image);
-    Scene scene(&c, &gargantua, &d);
+    BlackHole hole(1.32e28);
+    cout<<hole.radius<<endl;
+    AccretionDisk d(5*hole.radius, png::image<png::rgb_pixel>("disk_24.png"));
+    Scene scene(&c, &hole, &d);
 
     int holerad = 40;
     int ctr;
