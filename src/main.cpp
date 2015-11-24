@@ -53,26 +53,17 @@ struct StarField {
 };
 
 struct Scene {
-        Camera* cam;
-        BlackHole* hole;
-        AccretionDisk* disk;
-        StarField* stars;
-        Scene(Camera* c, BlackHole* h, AccretionDisk* d, StarField* f){
-            cam = c;
-            hole = h;
-            disk = d;
-            stars = f;
-        }
+    Camera* cam;
+    BlackHole* hole;
+    AccretionDisk* disk;
+    StarField* stars;
+    Scene(Camera* c, BlackHole* h, AccretionDisk* d, StarField* f){
+        cam = c;
+        hole = h;
+        disk = d;
+        stars = f;
+    }
 };
-
-/*
-class Spectre {
-    Spectre shift(double factor);
-    Spectre shifted(double factor);
-    Spectre& operator*=(double mul);
-    Spectre& operator+=(Spectre s);
-    png::rgb_pixel toXYZ();
-}*/
 
 template<typename T> T min(T x, T y) {if(x<y){ return x; }else{ return y;}}
 void trace_photons(Scene &scene, double min_tick=1.0, double dyn_tick_power=0, double dyn_tick_max_factor = 5, unsigned maxsteps = 1000){
