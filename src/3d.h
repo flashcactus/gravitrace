@@ -83,7 +83,7 @@ struct Camera {
             FOV=fov;
             resolution_v = xres;
             resolution_h = yres;
-            image = png::image<png::rgb_pixel>(xres, yres);
+            image = png::image<png::rgb_pixel>(yres, xres);
         }
 
         Photon emit_photon(int img_x, int img_y, double speed_of_light=1);
