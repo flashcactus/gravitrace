@@ -15,7 +15,7 @@ struct IntTable{
     double x[max_wvlen];    
     double y[max_wvlen];    
     double z[max_wvlen];    
-    IntTable(char* fname) {
+    IntTable(const char* fname) {
         FILE* f = fopen(fname, "r");
         double cx, cy, cz;
         int wlen, i;
@@ -86,7 +86,26 @@ class SpectralImage{
         Spectre *** pixels;
         unsigned x_res;
         unsigned y_res;
+        void allocate(int xres, int yres) {
+            x_res = xres;
+            y_res = yres;
+            pixels = static_cast<Spectre***>(malloc(x_res * sizeof(Spectre**)));//allocate row pointers
+            for(int x=0; x<x_res; ++x) {//allocate rows
+                pixels[x] = static_cast<Spectre**>(malloc(y_res * sizeof(Spectre*)));
+                for(int y=0; y<y_res; ++y) {//allocate elements                
+                    pixels[x][y] = new Spectre;
+                }
+            }
+        }
     public:
+        SpectralImage() {
+            x_res = 0;
+            y_res = 0;
+
+        }
+        SpectralImage(int yres, int xres) {
+            allocate(xres, yres);
+        }
         SpectralImage(int start, int end, const char* format) {
             if(start%wvlen_step || end%wvlen_step) {
                 throw "endpoints do not divide!"    ;
@@ -100,13 +119,9 @@ class SpectralImage{
                 sprintf(filename, format, (i+i0)*wvlen_step);
                 imgs[i] = png::image<png::gray_pixel>(filename);
             }
-            x_res = imgs[0].get_height();
-            y_res = imgs[0].get_width();
-            pixels = static_cast<Spectre***>(malloc(x_res * sizeof(Spectre**)));//allocate row pointers
-            for(int x=0; x<x_res; ++x) {//allocate rows
-                pixels[x] = static_cast<Spectre**>(malloc(y_res * sizeof(Spectre*)));
-                for(int y=0; y<y_res; ++y) {//allocate elements                
-                    pixels[x][y] = new Spectre;
+            allocate(imgs[0].get_height(),imgs[0].get_width());//allocate space
+            for(int x=0; x<x_res; ++x){
+                for(int y=0; y<y_res; ++y){
                     for(int i=0; i<il; ++i) {//fill spectre
                         pixels[x][y]->values[i0+i] = imgs[i][x][y];
                     }
@@ -116,8 +131,9 @@ class SpectralImage{
         
         unsigned get_height(){return x_res;}
         unsigned get_width(){return y_res;}
-
+        /*
         ~SpectralImage(){
+            if(instances && *instances) {--(*instances); return;}
             for(int x=0; x<x_res; ++x) {//free rows
                 for(int y=0; y<y_res; ++y) {//free elements                
                     delete pixels[x][y];
@@ -125,10 +141,11 @@ class SpectralImage{
                 free(pixels[x]);
             }
             free(pixels);
-        }
+        }*/
 
         Spectre& getpx(int x, int y) {
-            return *(pixels[x][y]);
+            Spectre* px = pixels[x][y];
+            return *px;
         }
         
         png::image<png::rgb_pixel> toRGB(const IntTable &t, double norm_mul=0.06){
@@ -142,7 +159,8 @@ class SpectralImage{
         }
 };
 
-/*//for testing
+//for testing
+/*
 int main(){
     png::image<png::gray_pixel> imgs[65];
     char filename[2048];
@@ -154,8 +172,8 @@ int main(){
     IntTable it(integ_fname);
     for(i=0;i<200;++i) fprintf(stderr,"t %lf %lf %lf\n", it.x[i],it.y[i],it.z[i]);
     png::image<png::rgb_pixel> rgb_im = si.toRGB(it,0.065);
+    si.getpx(700,1400);
     rgb_im.write("rgb.png");
 }
 */
-
 #endif

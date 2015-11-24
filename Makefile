@@ -11,14 +11,14 @@ test: bin/main cfg/test_config.txt
 
 build: bin/main
 dbg_build: bin/main_dbg
-bin/main: src/main.cpp src/3d.cpp src/3d.h
+bin/main: src/*.cpp src/*.h
 	cd src; g++ -I lib/libpng12 main.cpp -o ../bin/main -L. -lpng -lz -I lib
 
 bin/main_dbg: src/main.cpp src/3d.cpp src/3d.h
 	cd src; g++ -I lib.libpng12 main.cpp -o ../bin/main_dbg -g -L. -lpng -lz -I lib
 
-dbg: bin/main_dbg test_config.txt
-	gdb bin/main_dbg cfg/test_config.txt
+dbg: bin/main_dbg cfg/test_config.txt
+	cd bin; gdb main_dbg ../cfg/test_config.txt
 
 clean:
 	rm -f bin/main bin/main_dbg bin/*.png

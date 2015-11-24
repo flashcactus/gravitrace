@@ -31,7 +31,7 @@ struct AccretionDisk {
     Spectre get_pixel (vec3 point) {
         int x = round((texture.get_height()-1)*(point.x/(2*radius) + 0.5));
         int y = round((texture.get_width()-1)*(point.y/(2*radius) + 0.5));
-        return texture[x][y];
+        return texture.getpx(x,y);
     }
     AccretionDisk(double r, SpectralImage tx) {
         radius = r;
@@ -48,7 +48,7 @@ struct StarField {
         unsigned y = round((texture.get_width()-1)*(0.5+yaw)) ;
         y %= texture.get_width();
         if(x>=texture.get_height()) { cerr<<ptc<<'!'<<x<<endl;; x = texture.get_height()-1;}
-        return texture[x][y];
+        return texture.getpx(x,y);
     }
     StarField(SpectralImage t) {texture = t;}
 };
@@ -72,7 +72,7 @@ void trace_photons(Scene &scene, double min_tick=1.0, double dyn_tick_power=0, d
     double dt, rad;
     vec3 newpos;
     vec3 a, dv0, h;
-    Spectre px, black_px();
+    Spectre px, black_px;
     Photon p;
     cerr<<"Rendering";
     for (int x=0; x<scene.cam->resolution_v; x++){
@@ -116,7 +116,7 @@ void trace_photons(Scene &scene, double min_tick=1.0, double dyn_tick_power=0, d
                     break;    
                 }
             }
-            scene.cam->image[x][y] = px;
+            scene.cam->image.getpx(x,y) = px;
             total_steps += ctr;
         }
         cerr<<'.';
@@ -165,11 +165,13 @@ int main(int argc, char ** argv) {
     
     BlackHole hole(GM);
     SpectralImage disk_texture(texture_wvlen_first, texture_wvlen_last, disk_texture_fname_fmt);
-    AccretionDisk accd(5*hole.radius, png::image<png::rgb_pixel>("textures/disk_24.png"));
-    StarField stars(png::image<png::rgb_pixel>("textures/stars.png"));
+    AccretionDisk accd(5*hole.radius, SpectralImage(texture_wvlen_first, texture_wvlen_last,disk_texture_fname_fmt));
+    SpectralImage star_texture(texture_wvlen_first, texture_wvlen_last,star_texture_fname_fmt);
+    StarField stars(star_texture);
     Scene scene(&cam, &hole, &accd, &stars);
     
     trace_photons(scene, tracer_step_min, tracer_step_pow, tracer_step_maxratio, round(abs(cam.pos)));
     
-    cam.image.write(ofname);
+    IntTable integ_tbl(integration_table_fname);
+    cam.image.toRGB(integ_tbl,0.06).write(ofname);
 }

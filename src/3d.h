@@ -4,6 +4,7 @@
 #include "lib/quaternions.h"
 #include "lib/glm/glm.hpp"
 #include "lib/pngpp/png.hpp"
+#include "spectral.h"
 #include <cmath>
 #include <cstdio>
 
