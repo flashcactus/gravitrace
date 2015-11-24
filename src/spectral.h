@@ -77,7 +77,17 @@ struct Spectre {
             r= x*3.2404542 - y*1.5371385 - z*0.4985314;
             g=-x*0.9692660 + y*1.8760108 + z*0.0415560;
             b= x*0.0556434 - y*0.2040259 + z*1.0572252;
-            return png::rgb_pixel(static_cast<int>(r*norm_mul), static_cast<int>(g*norm_mul), static_cast<int>(b*norm_mul));
+            int rr, gg, bb;
+            rr = r*norm_mul;
+            gg = g*norm_mul;
+            bb = b*norm_mul;
+            rr = (rr>255)?255:rr;
+            rr = (rr<0)?0:rr;
+            gg = (gg>255)?255:gg;
+            gg = (gg<0)?0:gg;
+            bb = (bb>255)?255:bb;
+            bb = (bb<0)?0:bb;
+            return png::rgb_pixel(rr, gg, bb);
         }
 };
 
