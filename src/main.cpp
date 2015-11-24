@@ -28,14 +28,21 @@ struct BlackHole {
 struct AccretionDisk {
     double radius;
     SpectralImage texture;
+    png::image<png::gray_pixel> alpha;
     Spectre get_pixel (vec3 point) {
         int x = round((texture.get_height()-1)*(point.x/(2*radius) + 0.5));
         int y = round((texture.get_width()-1)*(point.y/(2*radius) + 0.5));
         return texture.getpx(x,y);
     }
-    AccretionDisk(double r, SpectralImage tx) {
+    png::gray_pixel get_alpha (vec3 point) {
+        int x = round((alpha.get_height()-1)*(point.x/(2*radius) + 0.5));
+        int y = round((alpha.get_width()-1)*(point.y/(2*radius) + 0.5));
+        return alpha[x][y];
+    }
+    AccretionDisk(double r, SpectralImage tx, png::image<png::gray_pixel> alp){
         radius = r;
         texture = tx;
+        alpha = alp;
     }
 };
 
@@ -76,10 +83,12 @@ void trace_photons(Scene &scene, double min_tick=1.0, double dyn_tick_power=0, d
     Spectre px, black_px;
     Photon p;
     cerr<<"Rendering";
+    double alpha_left;
     for (int x=0; x<scene.cam->resolution_v; x++){
         for (int y=0; y<scene.cam->resolution_h; y++){
             p = scene.cam->emit_photon(x,y);
             px = black_px;//reset pixel
+            alpha_left = 1;
             for(ctr = 0; ctr < maxsteps; ++ctr) {//cancel if too far away and going outwards or running for too long
                 rad = abs(p.pos);
                 dt = min_tick * pow(min(rad/scene.hole->radius, dyn_tick_max_factor), dyn_tick_power);//dt is proportional to DTP'th power of radius, but not larger than (DTMF*radius^DTP)
@@ -94,8 +103,9 @@ void trace_photons(Scene &scene, double min_tick=1.0, double dyn_tick_power=0, d
                         break;
                     } else if(isec_rad < scene.disk->radius) { //hits actual disk
                         double redfact=redshift_factor(scene.hole->radius, abs(isect), abs(scene.cam->pos));
-                        px = scene.disk->get_pixel(isect).shifted(redfact);
-                        break;
+                        double used_alpha = scene.disk->get_alpha(isect)*alpha_left/255;
+                        px += scene.disk->get_pixel(isect).shifted(redfact) *= used_alpha;
+                        alpha_left -= used_alpha;
                     }
                 }
                 if ( abs(newpos) < scene.hole->radius || 
@@ -115,7 +125,7 @@ void trace_photons(Scene &scene, double min_tick=1.0, double dyn_tick_power=0, d
                 
                 if (dotprod(p.vel,p.pos) > 0 && abs(p.pos) > 2*scene.disk->radius) {//going outwards, away from everything
                     double redfact=redshift_factor(scene.hole->radius, INFINITY, abs(scene.cam->pos));
-                    px = scene.stars->get_pixel(p.vel);
+                    px += scene.stars->get_pixel(p.vel)*=alpha_left;
                     break;    
                 }
             }
@@ -168,7 +178,7 @@ int main(int argc, char ** argv) {
     
     BlackHole hole(GM);
     SpectralImage disk_texture(texture_wvlen_first, texture_wvlen_last, disk_texture_fname_fmt);
-    AccretionDisk accd(5*hole.radius, SpectralImage(texture_wvlen_first, texture_wvlen_last,disk_texture_fname_fmt));
+    AccretionDisk accd(5*hole.radius, SpectralImage(texture_wvlen_first, texture_wvlen_last,disk_texture_fname_fmt),png::image<png::gray_pixel>("textures/disk_alpha.png"));
     SpectralImage star_texture(texture_wvlen_first, texture_wvlen_last,star_texture_fname_fmt);
     StarField stars(star_texture);
     Scene scene(&cam, &hole, &accd, &stars);
