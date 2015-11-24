@@ -1,6 +1,7 @@
+FLAGS=
+
 all: bin/main
 	cd bin; for f in ../cfg/*; do echo $$f; ./main $$f; done
-
 time: bin/main
 	cd bin; for f in ../cfg/*; do echo $$f; time ./main $$f; done
 
@@ -11,10 +12,10 @@ test: bin/main cfg/test_config.txt
 build: bin/main
 dbg_build: bin/main_dbg
 bin/main: src/main.cpp src/3d.cpp src/3d.h
-	cd src; g++ -lpng main.cpp -o ../bin/main
+	cd src; g++ -I lib/libpng12 main.cpp -o ../bin/main -L. -lpng -lz -I lib
 
 bin/main_dbg: src/main.cpp src/3d.cpp src/3d.h
-	cd src; g++ -lpng main.cpp -o ../bin/main_dbg -g
+	cd src; g++ -I lib.libpng12 main.cpp -o ../bin/main_dbg -g -L. -lpng -lz -I lib
 
 dbg: bin/main_dbg test_config.txt
 	gdb bin/main_dbg cfg/test_config.txt

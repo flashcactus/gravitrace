@@ -38,17 +38,41 @@ struct AccretionDisk {
     }
 };
 
+struct StarField {
+    png::image<png::rgb_pixel> texture;
+    png::rgb_pixel get_pixel (vec3 velocity) {
+        double ptc = asin(velocity.z)/PI;
+        double yaw = atan2(velocity.x, velocity.y)/(2*PI);
+        unsigned x = round((texture.get_height()-1)*(0.5-ptc));
+        unsigned y = round((texture.get_width()-1)*(0.5+yaw)) ;
+        y %= texture.get_width();
+        if(x>=texture.get_height()) { cerr<<ptc<<'!'<<x<<endl;; x = texture.get_height()-1;}
+        return texture[x][y];
+    }
+    StarField(png::image<png::rgb_pixel> t) {texture = t;}
+};
+
 struct Scene {
         Camera* cam;
         BlackHole* hole;
         AccretionDisk* disk;
-        Scene(Camera* c, BlackHole* h, AccretionDisk* d){
+        StarField* stars;
+        Scene(Camera* c, BlackHole* h, AccretionDisk* d, StarField* f){
             cam = c;
             hole = h;
-            disk = d;    
+            disk = d;
+            stars = f;
         }
 };
 
+/*
+class Spectre {
+    Spectre shift(double factor);
+    Spectre shifted(double factor);
+    Spectre& operator*=(double mul);
+    Spectre& operator+=(Spectre s);
+    png::rgb_pixel toXYZ();
+}*/
 
 template<typename T> T min(T x, T y) {if(x<y){ return x; }else{ return y;}}
 void trace_photons(Scene &scene, double min_tick=1.0, double dyn_tick_power=0, double dyn_tick_max_factor = 5, unsigned maxsteps = 1000){
@@ -96,6 +120,7 @@ void trace_photons(Scene &scene, double min_tick=1.0, double dyn_tick_power=0, d
                 p.vel = normalize(p.vel);
                 
                 if (dotprod(p.vel,p.pos) > 0 && abs(p.pos) > 2*scene.disk->radius) {//going outwards, away from everything
+                    px = scene.stars->get_pixel(p.vel);
                     break;    
                 }
             }
@@ -135,14 +160,15 @@ int main(int argc, char ** argv) {
         ofname = buf;    
     }
     fclose(inf);
-    Camera c(vec3(x,y,z), Rotation((PI/180)*yaw, (PI/180)*pitch, (PI/180)*roll), xres, yres);
+    Camera cam(vec3(x,y,z), Rotation((PI/180)*yaw, (PI/180)*pitch, (PI/180)*roll), xres, yres);
     
     BlackHole hole(GM);
-    AccretionDisk d(5*hole.radius, png::image<png::rgb_pixel>("textures/disk_24.png"));
-    Scene scene(&c, &hole, &d);
+    AccretionDisk accd(5*hole.radius, png::image<png::rgb_pixel>("textures/disk_24.png"));
+    StarField stars(png::image<png::rgb_pixel>("textures/stars.png"));
+    Scene scene(&cam, &hole, &accd, &stars);
     
-    trace_photons(scene, 1.0, 4.0, 5, round(abs(c.pos)));
+    trace_photons(scene, 1.0, 4.0, 5, round(abs(cam.pos)));
     
     
-    c.image.write(ofname);
+    cam.image.write(ofname);
 }
