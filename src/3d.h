@@ -75,7 +75,7 @@ struct Camera {
         double FOV;
         vec3 pos;
         Rotation rot;
-        png::image<png::rgb_pixel> image;
+        SpectralImage image;
 
         Camera(vec3 position, Rotation orientation, int xres=1024, int yres=1024, double fov=M_PI/2) {
             rot = orientation;
@@ -83,7 +83,7 @@ struct Camera {
             FOV=fov;
             resolution_v = xres;
             resolution_h = yres;
-            image = png::image<png::rgb_pixel>(yres, xres);
+            image = SpectralImage(yres, xres);
         }
 
         Photon emit_photon(int img_x, int img_y, double speed_of_light=1);

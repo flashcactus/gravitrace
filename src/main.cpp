@@ -1,6 +1,7 @@
 #include "lib/glm/glm.hpp"
 #include "lib/pngpp/png.hpp"
 #include "3d.h"
+#include "spectral.h"
 #include <iostream>
 #include <cstdio>
 
@@ -26,21 +27,21 @@ struct BlackHole {
 
 struct AccretionDisk {
     double radius;
-    png::image<png::rgb_pixel> texture;
-    png::rgb_pixel get_pixel (vec3 point) {
+    SpectralImage texture;
+    Spectre get_pixel (vec3 point) {
         int x = round((texture.get_height()-1)*(point.x/(2*radius) + 0.5));
         int y = round((texture.get_width()-1)*(point.y/(2*radius) + 0.5));
         return texture[x][y];
     }
-    AccretionDisk(double r, png::image<png::rgb_pixel> tx) {
+    AccretionDisk(double r, SpectralImage tx) {
         radius = r;
         texture = tx;
     }
 };
 
 struct StarField {
-    png::image<png::rgb_pixel> texture;
-    png::rgb_pixel get_pixel (vec3 velocity) {
+    SpectralImage texture;
+    Spectre get_pixel (vec3 velocity) {
         double ptc = asin(velocity.z)/PI;
         double yaw = atan2(velocity.x, velocity.y)/(2*PI);
         unsigned x = round((texture.get_height()-1)*(0.5-ptc));
@@ -49,7 +50,7 @@ struct StarField {
         if(x>=texture.get_height()) { cerr<<ptc<<'!'<<x<<endl;; x = texture.get_height()-1;}
         return texture[x][y];
     }
-    StarField(png::image<png::rgb_pixel> t) {texture = t;}
+    StarField(SpectralImage t) {texture = t;}
 };
 
 struct Scene {
@@ -71,7 +72,7 @@ void trace_photons(Scene &scene, double min_tick=1.0, double dyn_tick_power=0, d
     double dt, rad;
     vec3 newpos;
     vec3 a, dv0, h;
-    png::rgb_pixel px, black_px(0,0,0);
+    Spectre px, black_px();
     Photon p;
     cerr<<"Rendering";
     for (int x=0; x<scene.cam->resolution_v; x++){
@@ -124,6 +125,14 @@ void trace_photons(Scene &scene, double min_tick=1.0, double dyn_tick_power=0, d
     cerr<<"avg steps/px: "<<total_steps/(scene.cam->resolution_h * scene.cam->resolution_v)<<endl;
 }
 
+const char disk_texture_fname_fmt[]="textures/spectral/disk/%d.png";
+const char star_texture_fname_fmt[]="textures/spectral/stars/%d.png";
+const char integration_table_fname[]="textures/spectral/cie_xyz.txt";
+const int texture_wvlen_first=380, texture_wvlen_last=700;
+
+const double tracer_step_min=1.0;
+const double tracer_step_pow=4.0;
+const double tracer_step_maxratio=5.0;
 
 int main(int argc, char ** argv) {
     if(argc<2) {
@@ -152,14 +161,15 @@ int main(int argc, char ** argv) {
     }
     fclose(inf);
     Camera cam(vec3(x,y,z), Rotation((PI/180)*yaw, (PI/180)*pitch, (PI/180)*roll), xres, yres);
+
     
     BlackHole hole(GM);
+    SpectralImage disk_texture(texture_wvlen_first, texture_wvlen_last, disk_texture_fname_fmt);
     AccretionDisk accd(5*hole.radius, png::image<png::rgb_pixel>("textures/disk_24.png"));
     StarField stars(png::image<png::rgb_pixel>("textures/stars.png"));
     Scene scene(&cam, &hole, &accd, &stars);
     
-    trace_photons(scene, 1.0, 4.0, 5, round(abs(cam.pos)));
-    
+    trace_photons(scene, tracer_step_min, tracer_step_pow, tracer_step_maxratio, round(abs(cam.pos)));
     
     cam.image.write(ofname);
 }

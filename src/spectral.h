@@ -87,7 +87,7 @@ class SpectralImage{
         unsigned x_res;
         unsigned y_res;
     public:
-        SpectralImage(int start, int end, char* format) {
+        SpectralImage(int start, int end, const char* format) {
             if(start%wvlen_step || end%wvlen_step) {
                 throw "endpoints do not divide!"    ;
             }
