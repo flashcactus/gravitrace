@@ -1,9 +1,12 @@
 all: bin/main
 	cd bin; for f in ../cfg/*; do echo $$f; ./main $$f; done
 
-test: bin/main test_config.txt
-	time ./main cfg/test_config.txt
-	feh ./out.png
+time: bin/main
+	cd bin; for f in ../cfg/*; do echo $$f; time ./main $$f; done
+
+test: bin/main cfg/test_config.txt
+	cd bin;time ./main ../cfg/test_config.txt
+	feh bin/test.png
 
 build: bin/main
 dbg_build: bin/main_dbg
