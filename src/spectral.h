@@ -63,13 +63,17 @@ struct Spectre {
             }
             return *this;
         }
+        
+        friend Spectre operator*(const Spectre& s, double mul);
 
-        Spectre& operator+=(Spectre s){
+        Spectre& operator+=(const Spectre& s){
             for(int i=0; i<max_wvlen; ++i) {
                 values[i] += s.values[i];
             }
             return *this;
         }
+
+        friend Spectre operator+(const Spectre&, const Spectre);
         
         png::rgb_pixel to_rgb(const IntTable &t, double norm_mul=0.06) {
             double x,y,z,r,g,b;
@@ -95,6 +99,18 @@ struct Spectre {
             return png::rgb_pixel(rr, gg, bb);
         }
 };
+
+Spectre operator*(const Spectre& self, double mul) {
+    Spectre result=self;
+    result*=mul;
+    return result;
+}
+
+Spectre operator+(const Spectre& self, const Spectre& other) {
+    Spectre result=self;
+    result+=other;
+    return result;
+}
 
 class SpectralImage{
     private:
