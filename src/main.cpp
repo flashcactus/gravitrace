@@ -75,15 +75,15 @@ struct Scene {
 
 double redshift_factor(double sch_rad, double src_rad, double dest_rad) {return sqrt((1/sch_rad - 1/dest_rad) / (1/sch_rad - 1/src_rad));}
 template<typename T> T min(T x, T y) {if(x<y){ return x; }else{ return y;}}
-void trace_photons(Scene &scene, double min_tick=1.0, double dyn_tick_power=0, double dyn_tick_max_factor = 5, unsigned maxsteps = 1000){
+void trace_photons(Scene &scene, double min_tick=1.0, double dyn_tick_power=0, double dyn_tick_max_factor = 5, unsigned maxsteps = 1000, bool enable_redshift=true){
     unsigned ctr,total_steps=0;
     double dt, rad;
     vec3 newpos;
     vec3 a, dv0, h;
     Spectre px, black_px, addpx;
     Photon p;
+    double alpha_left, redfact;
     cerr<<"Rendering";
-    double alpha_left;
     for (int x=0; x<scene.cam->resolution_v; x++){
         for (int y=0; y<scene.cam->resolution_h; y++){
             p = scene.cam->emit_photon(x,y);
@@ -102,7 +102,7 @@ void trace_photons(Scene &scene, double min_tick=1.0, double dyn_tick_power=0, d
                     if(isec_rad < scene.hole->radius) {//goes into hole before intersection
                         break;
                     } else if(isec_rad < scene.disk->radius) { //hits actual disk
-                        double redfact=redshift_factor(scene.hole->radius, abs(isect), abs(scene.cam->pos));
+                        redfact = enable_redshift ? redshift_factor(scene.hole->radius, abs(isect), abs(scene.cam->pos)) : 1;
                         double used_alpha = scene.disk->get_alpha(isect)*alpha_left/255;
                         px += scene.disk->get_pixel(isect).shifted(redfact) *= used_alpha;
                         alpha_left -= used_alpha;
@@ -124,7 +124,7 @@ void trace_photons(Scene &scene, double min_tick=1.0, double dyn_tick_power=0, d
                 p.vel = normalize(p.vel);
                 
                 if (dotprod(p.vel,p.pos) > 0 && abs(p.pos) > 2*scene.disk->radius) {//going outwards, away from everything
-                    double redfact=redshift_factor(scene.hole->radius, INFINITY, abs(scene.cam->pos));
+                    redfact = enable_redshift ? redshift_factor(scene.hole->radius, INFINITY, abs(scene.cam->pos)) : 1;
                     px += scene.stars->get_pixel(p.vel).shifted(redfact) *= alpha_left;
                     break;    
                 }
@@ -158,12 +158,13 @@ int main(int argc, char ** argv) {
     }
     FILE* inf = fopen(argv[1], "r");
     double GM,x,y,z,yaw,pitch,roll,cam_fov,disk_size_ratio;
-    int xres,yres,nparam=0;
+    int xres,yres,apply_redshift,nparam=0;
     nparam += fscanf(inf,"%lf %lf\n",&GM,&disk_size_ratio);
     nparam += fscanf(inf,"%lf %lf %lf\n",&x,&y,&z);
     nparam += fscanf(inf,"%lf %lf %lf\n",&yaw,&pitch,&roll);
     nparam += fscanf(inf,"%lf %d %d\n",&cam_fov ,&xres,&yres);
-    if(nparam<9) {
+    nparam += fscanf(inf,"%d\n",&apply_redshift);
+    if(nparam<12) {
         cerr<<"Bad config file."<<endl;
         fclose(inf);
         return 65;    
@@ -197,7 +198,7 @@ int main(int argc, char ** argv) {
     double tracer_step_min = tracer_step_min_ratio * hole.radius;
     int max_steps = 5*round(abs(cam.pos)/tracer_step_min);
     cerr<<"Schwarzschild radius: "<<hole.radius<<" LS"<<endl;
-    trace_photons(scene, tracer_step_min, tracer_step_pow, tracer_step_maxratio, max_steps);
+    trace_photons(scene, tracer_step_min, tracer_step_pow, tracer_step_maxratio, max_steps, apply_redshift);
     
     IntTable integ_tbl(integration_table_fname);
     cam.image.toRGB(integ_tbl,spectral_rgb_norm_mul).write(ofname);
