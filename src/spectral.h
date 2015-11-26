@@ -35,12 +35,17 @@ struct Spectre {
         Spectre shifted(double factor){
             Spectre newspec;
             double newwl;
-            int left, right;
             for(int i=0; i<max_wvlen; ++i) {
                 newwl = i*wvlen_step/factor;//reverse
                 newspec.values[i] = this->getwl(newwl);
             }
             return newspec;
+        }
+
+        Spectre(){
+            for(int i=0; i<max_wvlen; ++i) {
+                values[i] = 0;
+            }
         }
         
         double getwl(double wl){

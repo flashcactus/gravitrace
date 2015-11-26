@@ -80,7 +80,7 @@ void trace_photons(Scene &scene, double min_tick=1.0, double dyn_tick_power=0, d
     double dt, rad;
     vec3 newpos;
     vec3 a, dv0, h;
-    Spectre px, black_px;
+    Spectre px, black_px, addpx;
     Photon p;
     cerr<<"Rendering";
     double alpha_left;
@@ -125,7 +125,7 @@ void trace_photons(Scene &scene, double min_tick=1.0, double dyn_tick_power=0, d
                 
                 if (dotprod(p.vel,p.pos) > 0 && abs(p.pos) > 2*scene.disk->radius) {//going outwards, away from everything
                     double redfact=redshift_factor(scene.hole->radius, INFINITY, abs(scene.cam->pos));
-                    px += scene.stars->get_pixel(p.vel)*=alpha_left;
+                    px += scene.stars->get_pixel(p.vel).shifted(redfact) *= alpha_left;
                     break;    
                 }
             }
@@ -144,7 +144,6 @@ const char star_texture_spectral_fname_fmt[]="textures/spectral/stars/%d.png";
 const char integration_table_fname[]="textures/spectral/cie_xyz.txt";
 const int texture_wvlen_first=380, texture_wvlen_last=700;
 
-const double disk_size_ratio = 4.9;
 
 const double tracer_step_min_ratio=2e-3;
 const double tracer_step_pow=4;
@@ -158,12 +157,12 @@ int main(int argc, char ** argv) {
         return 65;
     }
     FILE* inf = fopen(argv[1], "r");
-    double GM,x,y,z,yaw,pitch,roll;
+    double GM,x,y,z,yaw,pitch,roll,cam_fov,disk_size_ratio;
     int xres,yres,nparam=0;
-    nparam += fscanf(inf,"%lf\n",&GM);
+    nparam += fscanf(inf,"%lf %lf\n",&GM,&disk_size_ratio);
     nparam += fscanf(inf,"%lf %lf %lf\n",&x,&y,&z);
     nparam += fscanf(inf,"%lf %lf %lf\n",&yaw,&pitch,&roll);
-    nparam += fscanf(inf,"%d %d\n",&xres,&yres);
+    nparam += fscanf(inf,"%lf %d %d\n",&cam_fov ,&xres,&yres);
     if(nparam<9) {
         cerr<<"Bad config file."<<endl;
         fclose(inf);
@@ -178,7 +177,7 @@ int main(int argc, char ** argv) {
         ofname = buf;    
     }
     fclose(inf);
-    Camera cam(vec3(x,y,z), Rotation((PI/180)*yaw, (PI/180)*pitch, (PI/180)*roll), xres, yres);
+    Camera cam(vec3(x,y,z), Rotation((M_PI/180)*yaw, (M_PI/180)*pitch, (M_PI/180)*roll), xres, yres, cam_fov*M_PI/180);
 
     
     BlackHole hole(GM);
@@ -197,7 +196,7 @@ int main(int argc, char ** argv) {
      
     double tracer_step_min = tracer_step_min_ratio * hole.radius;
     int max_steps = 5*round(abs(cam.pos)/tracer_step_min);
-    cerr<<hole.radius<<' '<<tracer_step_min<<' '<<max_steps<<' '<<abs(cam.pos)<<endl;
+    cerr<<"Schwarzschild radius: "<<hole.radius<<" LS"<<endl;
     trace_photons(scene, tracer_step_min, tracer_step_pow, tracer_step_maxratio, max_steps);
     
     IntTable integ_tbl(integration_table_fname);
