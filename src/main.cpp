@@ -138,14 +138,19 @@ void trace_photons(Scene &scene, double min_tick=1.0, double dyn_tick_power=0, d
     cerr<<"avg steps/px: "<<total_steps/(scene.cam->resolution_h * scene.cam->resolution_v)<<endl;
 }
 
-const char disk_texture_fname_fmt[]="textures/spectral/disk/%d.png";
-const char star_texture_fname_fmt[]="textures/spectral/stars/%d.png";
+const char disk_texture_spectral_fname_fmt[]="textures/spectral/disk/%d.png";
+const char disk_texture_alpha_fname[]="textures/disk_alpha.png";
+const char star_texture_spectral_fname_fmt[]="textures/spectral/stars/%d.png";
 const char integration_table_fname[]="textures/spectral/cie_xyz.txt";
 const int texture_wvlen_first=380, texture_wvlen_last=700;
 
-const double tracer_step_min=1.0;
-const double tracer_step_pow=4.0;
+const double disk_size_ratio = 4.9;
+
+const double tracer_step_min_ratio=2e-3;
+const double tracer_step_pow=4;
 const double tracer_step_maxratio=5.0;
+
+const double spectral_rgb_norm_mul=0.07;
 
 int main(int argc, char ** argv) {
     if(argc<2) {
@@ -177,14 +182,24 @@ int main(int argc, char ** argv) {
 
     
     BlackHole hole(GM);
-    SpectralImage disk_texture(texture_wvlen_first, texture_wvlen_last, disk_texture_fname_fmt);
-    AccretionDisk accd(5*hole.radius, SpectralImage(texture_wvlen_first, texture_wvlen_last,disk_texture_fname_fmt),png::image<png::gray_pixel>("textures/disk_alpha.png"));
-    SpectralImage star_texture(texture_wvlen_first, texture_wvlen_last,star_texture_fname_fmt);
-    StarField stars(star_texture);
-    Scene scene(&cam, &hole, &accd, &stars);
     
-    trace_photons(scene, tracer_step_min, tracer_step_pow, tracer_step_maxratio, round(abs(cam.pos)));
+    SpectralImage disk_texture(texture_wvlen_first, texture_wvlen_last, disk_texture_spectral_fname_fmt);
+    AccretionDisk accd(
+        hole.radius * disk_size_ratio, 
+        disk_texture,
+        png::image<png::gray_pixel>("textures/disk_alpha.png")
+    );
+    
+    SpectralImage star_texture(texture_wvlen_first, texture_wvlen_last, star_texture_spectral_fname_fmt);
+    StarField stars(star_texture);
+    
+    Scene scene(&cam, &hole, &accd, &stars);
+     
+    double tracer_step_min = tracer_step_min_ratio * hole.radius;
+    int max_steps = 5*round(abs(cam.pos)/tracer_step_min);
+    cerr<<hole.radius<<' '<<tracer_step_min<<' '<<max_steps<<' '<<abs(cam.pos)<<endl;
+    trace_photons(scene, tracer_step_min, tracer_step_pow, tracer_step_maxratio, max_steps);
     
     IntTable integ_tbl(integration_table_fname);
-    cam.image.toRGB(integ_tbl,0.05).write(ofname);
+    cam.image.toRGB(integ_tbl,spectral_rgb_norm_mul).write(ofname);
 }
